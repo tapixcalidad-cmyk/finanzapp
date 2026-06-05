@@ -30,6 +30,9 @@
       --purple: #7f77dd;
       --purple-bg: #eeedfe;
       --purple-text: #3c3489;
+      --teal: #1d9e75;
+      --teal-bg: #d0f0e4;
+      --teal-text: #085041;
       --radius: 12px;
       --radius-sm: 8px;
     }
@@ -212,6 +215,7 @@
     .summary-card.gasto { --active-color: var(--red); }
     .summary-card.deuda { --active-color: var(--amber); }
     .summary-card.balance { --active-color: var(--purple); cursor: default; }
+    .summary-card.balance-actual { --active-color: var(--teal); cursor: default; }
 
     .card-left { display: flex; align-items: center; gap: 12px; }
 
@@ -230,6 +234,7 @@
     .gasto .card-icon { background: var(--red-bg); }
     .deuda .card-icon { background: var(--amber-bg); }
     .balance .card-icon { background: var(--purple-bg); }
+    .balance-actual .card-icon { background: var(--teal-bg); }
 
     .card-info { display: flex; flex-direction: column; }
     .card-name { font-size: 14px; font-weight: 500; }
@@ -246,6 +251,7 @@
     .gasto .card-amount { color: var(--red-text); }
     .deuda .card-amount { color: var(--amber-text); }
     .balance .card-amount { color: var(--purple-text); }
+    .balance-actual .card-amount { color: var(--teal-text); }
 
     /* DETAIL PANEL */
     .detail-panel {
@@ -582,11 +588,22 @@
       <div class="card-amount" id="total-deuda">RD$0</div>
     </div>
 
+    <div class="summary-card balance-actual" id="card-balance-actual">
+      <div class="card-left">
+        <div class="card-icon">💵</div>
+        <div class="card-info">
+          <div class="card-name">Balance actual</div>
+          <div class="card-sub">Ingresos − Deudas − Gastos</div>
+        </div>
+      </div>
+      <div class="card-amount" id="total-balance-actual">RD$0</div>
+    </div>
+
     <div class="summary-card balance" id="card-balance">
       <div class="card-left">
         <div class="card-icon">⚖️</div>
         <div class="card-info">
-          <div class="card-name">Balance final</div>
+          <div class="card-name">Balance fin de mes</div>
           <div class="card-sub">Cobrar + Ingresos − Deudas − Gastos</div>
         </div>
       </div>
@@ -804,19 +821,29 @@
     const gastos = allData.filter(d => d.tipo === 'gasto' && (d.frecuencia === 'recurrente' || d.fecha?.startsWith(key)));
     const deudas = allData.filter(d => d.tipo === 'deuda' && d.estado !== 'pagado');
 
+    const deudasPagadas = allData.filter(d => d.tipo === 'deuda' && d.estado === 'pagado');
+
     const sumIngresos = ingresos.reduce((a,b)=>a+(b.monto||0),0);
     const sumCobrar = cobrar.reduce((a,b)=>a+(b.monto||0),0);
     const sumGastos = gastos.reduce((a,b)=>a+(b.monto||0),0);
     const sumDeudas = deudas.reduce((a,b)=>a+(b.monto||0),0);
-    const balance = sumCobrar + sumIngresos - sumDeudas - sumGastos;
+    const sumDeudasPagadas = deudasPagadas.reduce((a,b)=>a+(b.monto||0),0);
+
+    const balanceActual = sumIngresos - sumGastos - sumDeudasPagadas;
+    const balanceFin = sumCobrar + sumIngresos - sumDeudas - sumGastos;
 
     document.getElementById('total-ingreso').textContent = fmt(sumIngresos);
     document.getElementById('total-cobrar').textContent = fmt(sumCobrar);
     document.getElementById('total-gasto').textContent = fmt(sumGastos);
     document.getElementById('total-deuda').textContent = fmt(sumDeudas);
+
+    const balActEl = document.getElementById('total-balance-actual');
+    balActEl.textContent = fmt(balanceActual);
+    balActEl.style.color = balanceActual >= 0 ? 'var(--green-text)' : 'var(--red-text)';
+
     const balEl = document.getElementById('total-balance');
-    balEl.textContent = fmt(balance);
-    balEl.style.color = balance >= 0 ? 'var(--green-text)' : 'var(--red-text)';
+    balEl.textContent = fmt(balanceFin);
+    balEl.style.color = balanceFin >= 0 ? 'var(--green-text)' : 'var(--red-text)';
 
     if (selectedCard) renderDetail(selectedCard);
   };
