@@ -935,9 +935,30 @@
 
   // --- MARK STATE ---
   window.marcarEstado = async (id, estado) => {
+    const item = allData.find(d => d.id === id);
+    const today = new Date().toISOString().split('T')[0];
+
     await updateDoc(doc(db, 'transacciones', id), { estado });
     const idx = allData.findIndex(d => d.id === id);
     if (idx !== -1) allData[idx].estado = estado;
+
+    // Si se cobra una cuenta por cobrar, registrar como ingreso automáticamente
+    if (estado === 'cobrado' && item && item.tipo === 'cobrar') {
+      const ingreso = {
+        uid: currentUser.uid,
+        tipo: 'ingreso',
+        descripcion: `Cobro: ${item.descripcion || ''}`,
+        monto: item.monto,
+        fecha: today,
+        frecuencia: 'unico',
+        nota: 'Generado automáticamente al cobrar',
+        estado: 'activo',
+        createdAt: new Date().toISOString()
+      };
+      const ref = await addDoc(collection(db, 'transacciones'), ingreso);
+      allData.push({ id: ref.id, ...ingreso });
+    }
+
     renderSummary();
     if (selectedCard) renderDetail(selectedCard);
   };
