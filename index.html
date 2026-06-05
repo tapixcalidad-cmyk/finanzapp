@@ -289,6 +289,7 @@
 
     .detail-item:last-child { border-bottom: none; }
     .detail-item.highlight { background: var(--surface2); }
+    .detail-item.done { background: var(--surface2); }
 
     .item-info { flex: 1; min-width: 0; }
     .item-desc { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -878,9 +879,14 @@
 
     let items;
     if (type === 'ingreso') items = allData.filter(d => d.tipo==='ingreso' && (d.frecuencia==='recurrente' || d.fecha?.startsWith(key)));
-    else if (type === 'cobrar') items = allData.filter(d => d.tipo==='cobrar' && d.estado !== 'cobrado');
+    else if (type === 'cobrar') items = allData.filter(d => d.tipo==='cobrar');
     else if (type === 'gasto') items = allData.filter(d => d.tipo==='gasto' && (d.frecuencia==='recurrente' || d.fecha?.startsWith(key)));
-    else if (type === 'deuda') items = allData.filter(d => d.tipo==='deuda' && d.estado !== 'pagado');
+    else if (type === 'deuda') items = allData.filter(d => d.tipo==='deuda');
+
+    if (type === 'cobrar' || type === 'deuda') {
+      items = [...items.filter(d => d.estado !== 'cobrado' && d.estado !== 'pagado'),
+               ...items.filter(d => d.estado === 'cobrado' || d.estado === 'pagado')];
+    }
 
     const list = document.getElementById('detail-list');
     if (!items || items.length === 0) {
@@ -889,23 +895,25 @@
     }
 
     list.innerHTML = items.map(item => {
+      const isDone = item.estado === 'cobrado' || item.estado === 'pagado';
+      const strikeStyle = isDone ? 'text-decoration: line-through; opacity: 0.5;' : '';
       const freqBadge = item.frecuencia === 'recurrente'
         ? '<span class="badge badge-recurrente">Recurrente</span>'
         : '<span class="badge badge-unico">Único</span>';
       const estadoBadge = item.estado === 'cobrado'
-        ? '<span class="badge badge-cobrado">Cobrado</span>'
+        ? '<span class="badge badge-cobrado">✓ Cobrado</span>'
         : item.estado === 'pagado'
-        ? '<span class="badge badge-pagado">Pagado</span>'
+        ? '<span class="badge badge-pagado">✓ Pagado</span>'
         : (type === 'cobrar' ? '<span class="badge badge-pendiente-cobro">Pendiente</span>' : type === 'deuda' ? '<span class="badge badge-pendiente-pago">Pendiente</span>' : '');
 
-      const actionBtn = (type === 'cobrar')
+      const actionBtn = (type === 'cobrar' && !isDone)
         ? `<button class="btn-small success" onclick="marcarEstado('${item.id}','cobrado')">✓ Cobrar</button>`
-        : (type === 'deuda')
+        : (type === 'deuda' && !isDone)
         ? `<button class="btn-small success" onclick="marcarEstado('${item.id}','pagado')">✓ Pagar</button>`
         : '';
 
-      return `<div class="detail-item" id="item-${item.id}">
-        <div class="item-info">
+      return `<div class="detail-item${isDone ? ' done' : ''}" id="item-${item.id}">
+        <div class="item-info" style="${strikeStyle}">
           <div class="item-desc">${item.descripcion || 'Sin descripción'}</div>
           <div class="item-meta">
             <span>${item.fecha || ''}</span>
@@ -915,7 +923,7 @@
           </div>
         </div>
         <div class="item-right">
-          <div class="item-amount">${fmt(item.monto||0)}</div>
+          <div class="item-amount" style="${strikeStyle}">${fmt(item.monto||0)}</div>
           <div class="item-actions">
             ${actionBtn}
             <button class="btn-small danger" onclick="eliminar('${item.id}')">✕</button>
